@@ -11,7 +11,7 @@ given by Dmitri Loguinov
 constexpr int INITIAL_BUF_SIZE = 8192;
 constexpr int THRESHOLD = 1024;
 
-void winsock_download(const urlInfo& _info)
+char* winsock_download(const urlInfo& _info)
 {
 	char* str = _info.host;
 
@@ -20,18 +20,18 @@ void winsock_download(const urlInfo& _info)
 	//Initialize WinSock; once per program run
 	WORD wVersionRequested = MAKEWORD(2, 2);
 	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-		printf("WSAStartup error %d\n", WSAGetLastError());
+		printf("\tWSAStartup error %d\n", WSAGetLastError());
 		WSACleanup();
-		return;
+		return nullptr;
 	}
 
 	// open a TCP socket
 	SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sock == INVALID_SOCKET)
 	{
-		printf("socket() generated error %d\n", WSAGetLastError());
+		printf("\tsocket() generated error %d\n", WSAGetLastError());
 		WSACleanup();
-		return;
+		return nullptr;
 	}
 
 	// structure used in DNS lookups
@@ -41,42 +41,48 @@ void winsock_download(const urlInfo& _info)
 	struct sockaddr_in server;
 
 	// first assume that the string is an IP address
+	clock_t begin = clock();
 	DWORD IP = inet_addr(str);
 	if (IP == INADDR_NONE)
 	{
 		// if not a valid IP, then do a DNS lookup
 		if ((remote = gethostbyname(str)) == NULL)
 		{
-			printf("Invalid string: neither FQDN, nor IP address\n");
-			return;
+			printf("\tInvalid string: neither FQDN, nor IP address\n");
+			return nullptr;
 		}
 		else // take the first IP address and copy into sin_addr
 			memcpy((char*)&(server.sin_addr), remote->h_addr, remote->h_length);
+
 	}
 	else
 	{
 		// if a valid IP, directly drop its binary version into sin_addr
 		server.sin_addr.S_un.S_addr = IP;
 	}
+	clock_t end = clock();
+	printf("\tDoing DNS... done in %ims , found %s\n", end-begin, inet_ntoa(server.sin_addr));
 	// setup the port # and protocol type
 	server.sin_family = AF_INET;
 
 	const long tmpPort = strtol(_info.port, nullptr, 10);
 	if (tmpPort < 0 || tmpPort > 65535) {
-		std::cerr << "Error: port of out range: " << tmpPort << "\n";
+		std::cerr << "\tError: port of out range: " << tmpPort << "\n";
 		WSACleanup();
-		return;
+		return nullptr;
 	}
 	server.sin_port = htons((u_short)tmpPort);		// host-to-network flips the byte order
 
 	// connect to the server on port 80
+	begin = clock();
 	if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
 	{
-		printf("Connection error: %d\n", WSAGetLastError());
-		return;
+		printf("\tConnection error: %d\n", WSAGetLastError());
+		return nullptr;
 	}
-
-	printf("Successfully connected to %s (%s) on port %d\n", str, inet_ntoa(server.sin_addr), htons(server.sin_port));
+	end = clock();
+	printf("      * Connecting on page... done in %ims\n", end-begin);
+	//printf("Successfully connected to %s (%s) on port %d\n", str, inet_ntoa(server.sin_addr), htons(server.sin_port));
 
 	// send HTTP requests here
 
@@ -88,11 +94,13 @@ void winsock_download(const urlInfo& _info)
 	get_http_req += "\r\n";
 
 	//print for sanity
-	printf("Sending the following request:\n%s", get_http_req.c_str());
+	//printf("Sending the following request:\n%s", get_http_req.c_str());
 
+	begin = clock();
+	printf("\tLoading... ");
 	//send http request
 	if (SOCKET_ERROR == send(sock, get_http_req.c_str(), strlen(get_http_req.c_str()), 0)) {
-		std::cerr << "Error sending GET request: " << WSAGetLastError() << "\n";
+		std::cerr << "\tError sending GET request: " << WSAGetLastError() << "\n";
 		closesocket(sock);
 		WSACleanup();
 		exit(-1);
@@ -118,11 +126,11 @@ void winsock_download(const urlInfo& _info)
 				break;
 			}
 			if (nbytes == SOCKET_ERROR) {
-				std::cerr << "Recv error occured: " << WSAGetLastError() << "\n";
+				std::cerr << "\tRecv error occured: " << WSAGetLastError() << "\n";
 				free(recvbuf);
 				closesocket(sock);
 				WSACleanup();
-				return;
+				return nullptr;
 			}
 
 			curr += nbytes;
@@ -130,39 +138,42 @@ void winsock_download(const urlInfo& _info)
 				currBuffSize *= 2;
 				char* tmpBuf = (char*)realloc(recvbuf, currBuffSize);
 				if (tmpBuf == nullptr) {
-					std::cerr << "Memory allocation error: " << "\n";
+					std::cerr << "\tMemory allocation error: " << "\n";
 					free(recvbuf);
 					closesocket(sock);
 					WSACleanup();
-					return;
+					return nullptr;
 				}
 				recvbuf = tmpBuf;
 			}
 		}
 		else if (ret == 0) {
 			//timed out
-			std::cerr << "Request timed out\n";
+			std::cerr << "\tRequest timed out\n";
 			free(recvbuf);
 			closesocket(sock);
 			WSACleanup();
-			return;
+			return nullptr;
 		}
 		else if (ret == SOCKET_ERROR) {
 			//error
-			std::cerr << "Socket error occured: " << WSAGetLastError() << "\n";
+			std::cerr << "\tSocket error occured: " << WSAGetLastError() << "\n";
 			free(recvbuf);
 			closesocket(sock);
 			WSACleanup();
-			return;
+			return nullptr;
 		}
 	}
+	end = clock();
+	printf("done in %ims with %i bytes\n", end - begin, strlen(recvbuf));
 
-	printf("%s\n", recvbuf);
+	//printf("%s\n", recvbuf);
 
 	// close the socket to this server; open again for the next one
 	closesocket(sock);
 
 	// call cleanup when done with everything and ready to exit program
 	WSACleanup();
-	printf("Successfully Disconnected, exiting cleanly.\n");
+	//printf("Successfully Disconnected.\n");
+	return recvbuf;
 }

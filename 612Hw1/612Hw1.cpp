@@ -3,8 +3,9 @@
 
 #include "pch.h"
 #include "urlInfo.h"
+#include "headerParser.h"
 
-void winsock_download(const urlInfo& _info);
+char* winsock_download(const urlInfo& _info);
 
 int main(int argc, char** argv)
 {
@@ -15,14 +16,14 @@ int main(int argc, char** argv)
 	}
 	else {
 		//printf("Got 1 command line parameter.\n");
-		printf("Retrived 1 Link: %s\n", argv[1]);
+		printf("URL: %s\n", argv[1]);
 	}
 
 	int lLen = strlen(argv[1]);
 	
 	//check url length with max_req_len
 	if (lLen > MAX_REQUEST_LEN) {
-		std::cerr << "URL length is larger than the maximum request length.\n";
+		std::cerr << "\nURL length is larger than the maximum request length.\n";
 		std::cout << argv[1]<<"\n";
 		exit(-1);
 	}
@@ -31,23 +32,53 @@ int main(int argc, char** argv)
 	char* l = new char[lLen + 1];
 	memcpy(l, argv[1], lLen + 1);
 	urlInfo link;
+
 	link.extract(l);
+	printf("\tParsing URL... host %s, port %s, request %s%s\n", link.host, link.port, link.path, link.query);
 
 	delete[] l;
 	//check host for max len
 	int hLen = strlen(link.host);
 	if (hLen > MAX_HOST_LEN) {
-		std::cerr << "URL host length is larger than the maximum host length.\n";
+		std::cerr << "\nURL host length is larger than the maximum host length.\n";
 		std::cout<<link.host<<"\n";
 		exit(-1);
 	}
 
 	//output url info
-	link.print();
+	//link.print();
 
 	//do connection and http
-	winsock_download(link);
+	char* httpResponse = winsock_download(link);
+	
 
+	headerParser p(httpResponse);
+
+	std::cout << "\tVerifying header... status code " << p.statusCode << "\n";
+
+	if (p.statusCode > 199 && p.statusCode < 300) {
+		//parse html body here
+
+		HTMLParserBase pb;
+		char* pageLinks;
+		int nLinks;
+
+		clock_t begin = clock();
+		pageLinks = pb.Parse(p.body.string, p.body.length, argv[1], lLen, &nLinks);
+		clock_t end = clock();
+
+		printf("      + Parsing page... done in %ims with %i links\n", end - begin, nLinks);
+	}
+	else {
+		//skip html parse
+	}
+
+	std::cout << "\n---------------------------------------\n";
+
+	//print header
+	printf("%.*s\n", p.header.length, p.header.string);
+
+	free(httpResponse);
 	return 0;
 }
 

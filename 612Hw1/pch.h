@@ -10,7 +10,9 @@
 // add headers that you want to pre-compile here
 
 #include <iostream>
+#include <regex>
 #include <Windows.h>
+#include <time.h>
 #include <string.h>
 #include "HTMLParserBase.h"
 

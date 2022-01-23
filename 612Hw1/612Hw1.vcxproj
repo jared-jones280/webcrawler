@@ -157,6 +157,7 @@
     <ClCompile Include="winsock.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="headerParser.h" />
     <ClInclude Include="HTMLParserBase.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="urlInfo.h" />
