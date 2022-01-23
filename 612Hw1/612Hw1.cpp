@@ -19,15 +19,35 @@ int main(int argc, char** argv)
 	}
 
 	int lLen = strlen(argv[1]);
+	
+	//check url length with max_req_len
+	if (lLen > MAX_REQUEST_LEN) {
+		std::cerr << "URL length is larger than the maximum request length.\n";
+		std::cout << argv[1]<<"\n";
+		exit(-1);
+	}
+
+	//extract and parse info from url
 	char* l = new char[lLen + 1];
 	memcpy(l, argv[1], lLen + 1);
 	urlInfo link;
 	link.extract(l);
-	link.print();
-
-	winsock_download(link);
 
 	delete[] l;
+	//check host for max len
+	int hLen = strlen(link.host);
+	if (hLen > MAX_HOST_LEN) {
+		std::cerr << "URL host length is larger than the maximum host length.\n";
+		std::cout<<link.host<<"\n";
+		exit(-1);
+	}
+
+	//output url info
+	link.print();
+
+	//do connection and http
+	winsock_download(link);
+
 	return 0;
 }
 
