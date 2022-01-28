@@ -1,0 +1,5 @@
+http://www.example.com
+http://www.tamu.edu:80
+http://www.facebook.com:4437?addrbook.php
+http://www.dmoz.org
+http://www.yahoo.com

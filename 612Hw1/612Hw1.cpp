@@ -9,15 +9,40 @@ char* winsock_download(const urlInfo& _info);
 
 int main(int argc, char** argv)
 {
+	std::vector<std::string> urlList;
 	//check for only 1 input argument
-	if (argc != 2) {
-		printf("You entered %i parameters, please input 1 link.\n", argc - 1);
+	if (argc != 2 && argc != 3) {
+		printf("You entered %i parameters.\n Usage:\n./<executable> <link>\n or ./<executable> <numThreads> <linkFile>\n", argc - 1);
 		exit(-1);
 	}
-	else {
+	else if (argc ==2) {
 		//printf("Got 1 command line parameter.\n");
 		printf("URL: %s\n", argv[1]);
 	}
+	else if (argc == 3) {
+		//currenly only allow 1 thread
+		if (strtol(argv[1], nullptr, 10) != 1) {
+			std::cerr << "Only allowed 1 thread for now, please change numThreads and rerun.\n";
+			exit(-1);
+		}
+		
+		std::string line;
+		std::ifstream urlFile(argv[2]);
+		if (urlFile.is_open()) {
+			while (getline(urlFile, line)) {
+				urlList.push_back(line);
+			}
+			urlFile.close();
+		}
+		else
+			std::cerr << "Unable to open file "<<argv[2]<<"\n";
+
+		for (auto x : urlList) {
+			std::cout << x << std::endl;
+		}
+	}
+	
+	//need to adapt to using url list and add robots.txt functionality
 
 	int lLen = strlen(argv[1]);
 	
