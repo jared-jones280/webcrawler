@@ -37,7 +37,7 @@ private:
 
 		}
 		else {
-			std::cerr << "\tUnable to find status code in html response, this is not valid\n";
+			std::cerr << "Unable to find status code in html response, this is not valid\n";
 			exit(-1);
 		}
 
