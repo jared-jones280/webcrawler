@@ -1,5 +1,10 @@
 http://www.example.com
 http://www.tamu.edu:80
-http://www.facebook.com:4437?addrbook.php
+http://165.91.22.70:80
+http://128.194.135.72
+http://abonnement.lesechos.fr/faq/
+http://www.weatherline.net/
 http://www.dmoz.org
 http://www.yahoo.com
+http://www.facebook.com:80
+http://www.facebook.com:4437?addrbook.php

@@ -5,13 +5,9 @@ given by Dmitri Loguinov
 */
 
 #include "pch.h"
-#include "urlInfo.h"
-#pragma comment(lib,"ws2_32.lib")
+#include "winsock.h"
 
-constexpr int INITIAL_BUF_SIZE = 8192;
-constexpr int THRESHOLD = 1024;
-
-char* winsock_download(const urlInfo& _info)
+char* winsock::winsock_download(const urlInfo& _info)
 {
 	char* str = _info.host;
 
@@ -41,8 +37,9 @@ char* winsock_download(const urlInfo& _info)
 	struct sockaddr_in server;
 
 	// first assume that the string is an IP address
-	clock_t begin = clock();
 	DWORD IP = inet_addr(str);
+	bool sHost;
+	clock_t begin = clock();
 	if (IP == INADDR_NONE)
 	{
 		// if not a valid IP, then do a DNS lookup
@@ -51,17 +48,40 @@ char* winsock_download(const urlInfo& _info)
 			printf("\tInvalid string: neither FQDN, nor IP address. Failed with %i\n", WSAGetLastError());
 			return nullptr;
 		}
-		else // take the first IP address and copy into sin_addr
-			memcpy((char*)&(server.sin_addr), remote->h_addr, remote->h_length);
+		else { // take the first IP address and copy into sin_addr
+			auto p = seenHosts.insert(str);
 
+			//check Host Uniqueness
+			if (p.second) {
+				printf("\tChecking Host uniqueness... passed\n");
+			}
+			else {
+				printf("\tChecking Host uniqueness... failed\n");
+				return nullptr;
+			}
+			memcpy((char*)&(server.sin_addr), remote->h_addr, remote->h_length);
+		}
 	}
 	else
 	{
+		printf("\tChecking Host uniqueness... Skipped (host = IP)\n");
 		// if a valid IP, directly drop its binary version into sin_addr
 		server.sin_addr.S_un.S_addr = IP;
 	}
 	clock_t end = clock();
-	printf("\tDoing DNS... done in %ims , found %s\n", end-begin, inet_ntoa(server.sin_addr));
+
+	printf("\tDoing DNS... done in %ims , found %s\n", end - begin, inet_ntoa(server.sin_addr));
+
+	//check IP uniqueness
+	auto p = seenIps.insert(inet_ntoa(server.sin_addr));
+	if (p.second) {
+		printf("\tChecking IP uniqueness... passed\n");
+	}
+	else {
+		printf("\tChecking IP uniqueness... failed\n");
+		return nullptr;
+	}
+
 	// setup the port # and protocol type
 	server.sin_family = AF_INET;
 
@@ -81,7 +101,7 @@ char* winsock_download(const urlInfo& _info)
 		return nullptr;
 	}
 	end = clock();
-	printf("      * Connecting on page... done in %ims\n", end-begin);
+	printf("      * Connecting on page... done in %ims\n", end - begin);
 	//printf("Successfully connected to %s (%s) on port %d\n", str, inet_ntoa(server.sin_addr), htons(server.sin_port));
 
 	// send HTTP requests here
@@ -103,7 +123,7 @@ char* winsock_download(const urlInfo& _info)
 		std::cerr << "\tError sending GET request: " << WSAGetLastError() << "\n";
 		closesocket(sock);
 		WSACleanup();
-		exit(-1);
+		return nullptr;
 	}
 
 	fd_set readFds;
@@ -166,10 +186,6 @@ char* winsock_download(const urlInfo& _info)
 	}
 	end = clock();
 
-	if (strstr(recvbuf, "\r\n\r\n") == nullptr || strstr(recvbuf, "HTTP") == nullptr) {
-		printf("failed with non-HTTP header\n");
-		exit(-1);
-	}
 	printf("done in %ims with %i bytes\n", end - begin, strlen(recvbuf));
 
 	//printf("%s\n", recvbuf);

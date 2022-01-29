@@ -15,11 +15,9 @@ struct headerParser {
 
 	headerParser(char* _http) {
 		http = _http;
-		extract();
 	}
 	
-private:
-	void extract() {
+	bool extract() {
 		//parse out header
 		char* eoh = strstr(http, "\r\n\r\n");
 		header.string = http;
@@ -34,11 +32,11 @@ private:
 		if (std::regex_search(header.string,matches,sCode)) {
 			//first match will be status code
 			statusCode = strtol(matches[0].first, nullptr, 10);
-
+			return 1;
 		}
 		else {
 			std::cerr << "Unable to find status code in html response, this is not valid\n";
-			exit(-1);
+			return 0;
 		}
 
 	}

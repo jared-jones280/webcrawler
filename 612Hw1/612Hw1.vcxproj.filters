@@ -38,6 +38,9 @@
     <ClInclude Include="headerParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="winsock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="urls.txt">

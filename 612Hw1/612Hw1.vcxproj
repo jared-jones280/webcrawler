@@ -162,6 +162,7 @@
     <ClInclude Include="HTMLParserBase.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="urlInfo.h" />
+    <ClInclude Include="winsock.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="urls.txt" />
