@@ -36,10 +36,7 @@ int main(int argc, char** argv)
 		else
 			std::cerr << "Unable to open file "<<argv[2]<<"\n";
 	}
-	for (auto x : urlList) {
-		std::cout << x << std::endl;
-	}
-	
+
 	winsock w;
 	for (auto x : urlList) {
 		printf("URL: %s\n", x.c_str());
