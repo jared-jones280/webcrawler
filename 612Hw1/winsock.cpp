@@ -48,7 +48,7 @@ char* winsock_download(const urlInfo& _info)
 		// if not a valid IP, then do a DNS lookup
 		if ((remote = gethostbyname(str)) == NULL)
 		{
-			printf("\tInvalid string: neither FQDN, nor IP address\n");
+			printf("\tInvalid string: neither FQDN, nor IP address. Failed with %i\n", WSAGetLastError());
 			return nullptr;
 		}
 		else // take the first IP address and copy into sin_addr
@@ -165,6 +165,11 @@ char* winsock_download(const urlInfo& _info)
 		}
 	}
 	end = clock();
+
+	if (strstr(recvbuf, "\r\n\r\n") == nullptr || strstr(recvbuf, "HTTP") == nullptr) {
+		printf("failed with non-HTTP header\n");
+		exit(-1);
+	}
 	printf("done in %ims with %i bytes\n", end - begin, strlen(recvbuf));
 
 	//printf("%s\n", recvbuf);

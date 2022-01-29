@@ -75,7 +75,11 @@ int main(int argc, char** argv)
 
 	//do connection and http
 	char* httpResponse = winsock_download(link);
-	
+
+	if (httpResponse == nullptr)
+		exit(-1);
+
+	//std::cout <<"\"" << httpResponse  <<"\""<< std::endl;
 
 	headerParser p(httpResponse);
 

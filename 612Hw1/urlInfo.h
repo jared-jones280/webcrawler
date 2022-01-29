@@ -65,6 +65,11 @@ struct urlInfo {
 			link[p - link] = '\0';
 			//printf("Truncated port : % s\n", link);
 			//printf("Port: %s\n", port);
+			if (strtol(port,nullptr, 10) == 0 || plen == 0) {
+				std::cerr<< "\tParsing URL... failed with invalid port\n";
+				exit(-1);
+			}
+
 		}
 		else {
 			port = new char[3];
