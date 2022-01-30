@@ -6,6 +6,70 @@ given by Dmitri Loguinov
 
 #include "pch.h"
 #include "winsock.h"
+#include "headerParser.h"
+
+char* winsock::readSock(SOCKET sock)
+{
+	fd_set readFds;
+	FD_ZERO(&readFds);
+	char* recvbuf = (char*)malloc(INITIAL_BUF_SIZE);
+	size_t currBuffSize = INITIAL_BUF_SIZE;
+	size_t curr = 0;
+
+	while (true) {
+		TIMEVAL timeout = { 10,0 };
+		FD_SET(sock, &readFds);
+		int ret = select(0, &readFds, nullptr, nullptr, &timeout);
+
+		if (ret > 0) {
+			// do recv
+			int nbytes = recv(sock, &recvbuf[curr], (int)(currBuffSize - curr), 0);
+
+			if (nbytes == 0) {
+				recvbuf[curr] = '\0';
+				break;
+			}
+			if (nbytes == SOCKET_ERROR) {
+				std::cerr << "\tRecv error occured: " << WSAGetLastError() << "\n";
+				free(recvbuf);
+				closesocket(sock);
+				WSACleanup();
+				return nullptr;
+			}
+
+			curr += nbytes;
+			if (currBuffSize - curr < THRESHOLD) {
+				currBuffSize *= 2;
+				char* tmpBuf = (char*)realloc(recvbuf, currBuffSize);
+				if (tmpBuf == nullptr) {
+					std::cerr << "\tMemory allocation error: " << "\n";
+					free(recvbuf);
+					closesocket(sock);
+					WSACleanup();
+					return nullptr;
+				}
+				recvbuf = tmpBuf;
+			}
+		}
+		else if (ret == 0) {
+			//timed out
+			std::cerr << "\tRequest timed out\n";
+			free(recvbuf);
+			closesocket(sock);
+			WSACleanup();
+			return nullptr;
+		}
+		else if (ret == SOCKET_ERROR) {
+			//error
+			std::cerr << "\tSocket error occured: " << WSAGetLastError() << "\n";
+			free(recvbuf);
+			closesocket(sock);
+			WSACleanup();
+			return nullptr;
+		}
+	}
+	return recvbuf;
+}
 
 char* winsock::winsock_download(const urlInfo& _info)
 {
@@ -93,6 +157,70 @@ char* winsock::winsock_download(const urlInfo& _info)
 	}
 	server.sin_port = htons((u_short)tmpPort);		// host-to-network flips the byte order
 
+	////////////////////////////////////robots.txt///////////////////////////////////////
+	begin = clock();
+	if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+	{
+		printf("\tConnection error: %d\n", WSAGetLastError());
+		return nullptr;
+	}
+	end = clock();
+	printf("        Connecting on robots... done in %ims\n", end - begin);
+
+	//create http request
+	std::string robots_http_req = "GET robots.txt HTTP/1.0\r\n";
+	robots_http_req += "User-agent: tUrTlEcRaWlEr/1.0\r\n";
+	robots_http_req += "Host: " + (std::string)_info.host + "\r\n";
+	robots_http_req += "Connection: close\r\n";
+	robots_http_req += "\r\n";
+
+	begin = clock();
+	printf("\tLoading... ");
+	//send http request
+	if (SOCKET_ERROR == send(sock, robots_http_req.c_str(), strlen(robots_http_req.c_str()), 0)) {
+		std::cerr << "\tError sending GET request: " << WSAGetLastError() << "\n";
+		closesocket(sock);
+		WSACleanup();
+		return nullptr;
+	}
+
+	char* headbuf = readSock(sock);
+	if (headbuf == nullptr) {
+		return nullptr;
+	}
+	end = clock();
+
+	printf("done in %ims with %i bytes\n", end - begin, strlen(headbuf));
+	//printf("%s\n", recvbuf);
+	// close the socket to this server; open again for the next one
+	closesocket(sock);
+
+	//parse robots.txt header
+
+	headerParser hp(headbuf);
+	if (hp.extract() == 0) {
+		return nullptr;
+	}
+
+	std::cout << "\tVerifying header... status code " << hp.statusCode << "\n";
+
+	//looking for DNE (4xx) on robots to continue
+	//else continue and parse actual page
+	if (hp.statusCode < 400 || hp.statusCode > 499) {
+		return nullptr;
+	}
+
+	///////////////////////////////////////PAGE//////////////////////////////////////////
+	//set up socket again
+	// open a TCP socket
+	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sock == INVALID_SOCKET)
+	{
+		printf("\tsocket() generated error %d\n", WSAGetLastError());
+		WSACleanup();
+		return nullptr;
+	}
+
 	// connect to the server on port 80
 	begin = clock();
 	if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
@@ -102,7 +230,6 @@ char* winsock::winsock_download(const urlInfo& _info)
 	}
 	end = clock();
 	printf("      * Connecting on page... done in %ims\n", end - begin);
-	//printf("Successfully connected to %s (%s) on port %d\n", str, inet_ntoa(server.sin_addr), htons(server.sin_port));
 
 	// send HTTP requests here
 
@@ -126,64 +253,8 @@ char* winsock::winsock_download(const urlInfo& _info)
 		return nullptr;
 	}
 
-	fd_set readFds;
-	FD_ZERO(&readFds);
-	char* recvbuf = (char*)malloc(INITIAL_BUF_SIZE);
-	size_t currBuffSize = INITIAL_BUF_SIZE;
-	size_t curr = 0;
+	char* recvbuf = readSock(sock);
 
-	while (true) {
-		TIMEVAL timeout = { 10,0 };
-		FD_SET(sock, &readFds);
-		int ret = select(0, &readFds, nullptr, nullptr, &timeout);
-
-		if (ret > 0) {
-			// do recv
-			int nbytes = recv(sock, &recvbuf[curr], (int)(currBuffSize - curr), 0);
-
-			if (nbytes == 0) {
-				recvbuf[curr] = '\0';
-				break;
-			}
-			if (nbytes == SOCKET_ERROR) {
-				std::cerr << "\tRecv error occured: " << WSAGetLastError() << "\n";
-				free(recvbuf);
-				closesocket(sock);
-				WSACleanup();
-				return nullptr;
-			}
-
-			curr += nbytes;
-			if (currBuffSize - curr < THRESHOLD) {
-				currBuffSize *= 2;
-				char* tmpBuf = (char*)realloc(recvbuf, currBuffSize);
-				if (tmpBuf == nullptr) {
-					std::cerr << "\tMemory allocation error: " << "\n";
-					free(recvbuf);
-					closesocket(sock);
-					WSACleanup();
-					return nullptr;
-				}
-				recvbuf = tmpBuf;
-			}
-		}
-		else if (ret == 0) {
-			//timed out
-			std::cerr << "\tRequest timed out\n";
-			free(recvbuf);
-			closesocket(sock);
-			WSACleanup();
-			return nullptr;
-		}
-		else if (ret == SOCKET_ERROR) {
-			//error
-			std::cerr << "\tSocket error occured: " << WSAGetLastError() << "\n";
-			free(recvbuf);
-			closesocket(sock);
-			WSACleanup();
-			return nullptr;
-		}
-	}
 	end = clock();
 
 	printf("done in %ims with %i bytes\n", end - begin, strlen(recvbuf));

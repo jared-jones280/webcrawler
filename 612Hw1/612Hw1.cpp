@@ -79,11 +79,6 @@ int main(int argc, char** argv)
 		if (httpResponse == nullptr)
 			continue;
 
-		if (strstr(httpResponse, "\r\n\r\n") == nullptr || strstr(httpResponse, "HTTP") == nullptr) {
-			printf("failed with non-HTTP header\n");
-			continue;
-		}
-
 		//std::cout <<"\"" << httpResponse  <<"\""<< std::endl;
 
 		headerParser p(httpResponse);

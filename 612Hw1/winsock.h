@@ -11,6 +11,7 @@ struct winsock {
 	std::unordered_set<std::string> seenIps;
 	std::unordered_set<std::string> seenHosts;
 
+	char* readSock(SOCKET);
 	char* winsock_download(const urlInfo&);
 
 };

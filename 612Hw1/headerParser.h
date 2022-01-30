@@ -18,6 +18,13 @@ struct headerParser {
 	}
 	
 	bool extract() {
+		//some quick error checkin
+
+		if (strstr(http, "\r\n\r\n") == nullptr || strstr(http, "HTTP") == nullptr) {
+			printf("failed with non-HTTP header\n");
+			return 0;
+		}
+
 		//parse out header
 		char* eoh = strstr(http, "\r\n\r\n");
 		header.string = http;
