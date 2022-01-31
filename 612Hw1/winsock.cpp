@@ -18,6 +18,7 @@ char* winsock::readSock(SOCKET sock)
 
 	while (true) {
 		TIMEVAL timeout = { 10,0 };
+		FD_ZERO(&readFds);
 		FD_SET(sock, &readFds);
 		int ret = select(0, &readFds, nullptr, nullptr, &timeout);
 
@@ -59,7 +60,7 @@ char* winsock::readSock(SOCKET sock)
 			WSACleanup();
 			return nullptr;
 		}
-		else if (ret == SOCKET_ERROR) {
+		else{
 			//error
 			std::cerr << "\tSocket error occured: " << WSAGetLastError() << "\n";
 			free(recvbuf);
@@ -68,6 +69,9 @@ char* winsock::readSock(SOCKET sock)
 			return nullptr;
 		}
 	}
+
+	printf("%.*s", curr, recvbuf);
+
 	return recvbuf;
 }
 
@@ -257,7 +261,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 
 	end = clock();
 
-	printf("done in %ims with %i bytes\n", end - begin, strlen(recvbuf));
+	printf("done in %ims with %lu bytes\n", end - begin, strlen(recvbuf));
 
 	//printf("%s\n", recvbuf);
 
