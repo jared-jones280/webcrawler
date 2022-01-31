@@ -291,6 +291,12 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 
 	cStringSpan recvbuf = readSock(sock, page_size);
 
+	if (recvbuf.string == nullptr) {
+		closesocket(sock);
+		WSACleanup();
+		return recvbuf;
+	}
+
 	end = clock();
 
 	printf("done in %ims with %lu bytes\n", end - begin, recvbuf.length);
