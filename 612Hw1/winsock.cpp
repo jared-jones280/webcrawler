@@ -7,8 +7,9 @@ given by Dmitri Loguinov
 #include "pch.h"
 #include "winsock.h"
 #include "headerParser.h"
+#include "cStringSpan.h"
 
-char* winsock::readSock(SOCKET sock)
+cStringSpan winsock::readSock(SOCKET sock)
 {
 	fd_set readFds;
 	FD_ZERO(&readFds);
@@ -35,21 +36,28 @@ char* winsock::readSock(SOCKET sock)
 				free(recvbuf);
 				closesocket(sock);
 				WSACleanup();
-				return nullptr;
+				cStringSpan ret = cStringSpan(nullptr, 0);
+				return ret;
 			}
-
 			curr += nbytes;
 			if (currBuffSize - curr < THRESHOLD) {
 				currBuffSize *= 2;
-				char* tmpBuf = (char*)realloc(recvbuf, currBuffSize);
-				if (tmpBuf == nullptr) {
+				//char* newbuf = (char*)malloc(currBuffSize);
+				//for (int i = 0; i < currBuffSize / 2; i++) {
+				//	//std::cout << recvbuf[i];
+				//	newbuf[i] = recvbuf[i];
+				//}
+				//free(recvbuf);
+				//recvbuf = newbuf;
+
+				recvbuf = (char*)realloc(recvbuf, currBuffSize*sizeof(char));
+				if (recvbuf == nullptr) {
 					std::cerr << "\tMemory allocation error: " << "\n";
 					free(recvbuf);
 					closesocket(sock);
 					WSACleanup();
-					return nullptr;
+					return cStringSpan(nullptr,0);
 				}
-				recvbuf = tmpBuf;
 			}
 		}
 		else if (ret == 0) {
@@ -58,7 +66,8 @@ char* winsock::readSock(SOCKET sock)
 			free(recvbuf);
 			closesocket(sock);
 			WSACleanup();
-			return nullptr;
+			cStringSpan ret = cStringSpan(nullptr, 0);
+			return ret;
 		}
 		else{
 			//error
@@ -66,16 +75,19 @@ char* winsock::readSock(SOCKET sock)
 			free(recvbuf);
 			closesocket(sock);
 			WSACleanup();
-			return nullptr;
+			cStringSpan ret = cStringSpan(nullptr, 0);
+			return ret;
 		}
 	}
-
-	printf("%.*s", curr, recvbuf);
-
-	return recvbuf;
+	//for (int i = 0; i < currBuffSize; i++) {
+	//	std::cout << recvbuf[i];
+	//}
+	
+	cStringSpan ret = cStringSpan(recvbuf, curr);
+	return ret;
 }
 
-char* winsock::winsock_download(const urlInfo& _info)
+cStringSpan winsock::winsock_download(const urlInfo& _info)
 {
 	char* str = _info.host;
 
@@ -86,7 +98,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
 		printf("\tWSAStartup error %d\n", WSAGetLastError());
 		WSACleanup();
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 
 	// open a TCP socket
@@ -95,7 +107,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 	{
 		printf("\tsocket() generated error %d\n", WSAGetLastError());
 		WSACleanup();
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 
 	// structure used in DNS lookups
@@ -114,7 +126,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 		if ((remote = gethostbyname(str)) == NULL)
 		{
 			printf("\tInvalid string: neither FQDN, nor IP address. Failed with %i\n", WSAGetLastError());
-			return nullptr;
+			return cStringSpan(nullptr,0);
 		}
 		else { // take the first IP address and copy into sin_addr
 			auto p = seenHosts.insert(str);
@@ -125,7 +137,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 			}
 			else {
 				printf("\tChecking Host uniqueness... failed\n");
-				return nullptr;
+				return cStringSpan(nullptr,0);
 			}
 			memcpy((char*)&(server.sin_addr), remote->h_addr, remote->h_length);
 		}
@@ -147,7 +159,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 	}
 	else {
 		printf("\tChecking IP uniqueness... failed\n");
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 
 	// setup the port # and protocol type
@@ -157,7 +169,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 	if (tmpPort < 0 || tmpPort > 65535) {
 		std::cerr << "\tError: port of out range: " << tmpPort << "\n";
 		WSACleanup();
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 	server.sin_port = htons((u_short)tmpPort);		// host-to-network flips the byte order
 
@@ -166,7 +178,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 	if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
 	{
 		printf("\tConnection error: %d\n", WSAGetLastError());
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 	end = clock();
 	printf("        Connecting on robots... done in %ims\n", end - begin);
@@ -185,16 +197,16 @@ char* winsock::winsock_download(const urlInfo& _info)
 		std::cerr << "\tError sending GET request: " << WSAGetLastError() << "\n";
 		closesocket(sock);
 		WSACleanup();
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 
-	char* headbuf = readSock(sock);
-	if (headbuf == nullptr) {
-		return nullptr;
+	cStringSpan headbuf = readSock(sock);
+	if (headbuf.string == nullptr) {
+		return cStringSpan(nullptr,0);
 	}
 	end = clock();
 
-	printf("done in %ims with %i bytes\n", end - begin, strlen(headbuf));
+	printf("done in %ims with %i bytes\n", end - begin, headbuf.length);
 	//printf("%s\n", recvbuf);
 	// close the socket to this server; open again for the next one
 	closesocket(sock);
@@ -203,7 +215,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 
 	headerParser hp(headbuf);
 	if (hp.extract() == 0) {
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 
 	std::cout << "\tVerifying header... status code " << hp.statusCode << "\n";
@@ -211,7 +223,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 	//looking for DNE (4xx) on robots to continue
 	//else continue and parse actual page
 	if (hp.statusCode < 400 || hp.statusCode > 499) {
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 
 	///////////////////////////////////////PAGE//////////////////////////////////////////
@@ -222,7 +234,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 	{
 		printf("\tsocket() generated error %d\n", WSAGetLastError());
 		WSACleanup();
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 
 	// connect to the server on port 80
@@ -230,7 +242,7 @@ char* winsock::winsock_download(const urlInfo& _info)
 	if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
 	{
 		printf("\tConnection error: %d\n", WSAGetLastError());
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 	end = clock();
 	printf("      * Connecting on page... done in %ims\n", end - begin);
@@ -254,14 +266,14 @@ char* winsock::winsock_download(const urlInfo& _info)
 		std::cerr << "\tError sending GET request: " << WSAGetLastError() << "\n";
 		closesocket(sock);
 		WSACleanup();
-		return nullptr;
+		return cStringSpan(nullptr,0);
 	}
 
-	char* recvbuf = readSock(sock);
+	cStringSpan recvbuf = readSock(sock);
 
 	end = clock();
 
-	printf("done in %ims with %lu bytes\n", end - begin, strlen(recvbuf));
+	printf("done in %ims with %lu bytes\n", end - begin, recvbuf.length);
 
 	//printf("%s\n", recvbuf);
 

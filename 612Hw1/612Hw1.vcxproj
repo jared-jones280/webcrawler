@@ -158,6 +158,7 @@
     <ClCompile Include="winsock.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cStringSpan.h" />
     <ClInclude Include="headerParser.h" />
     <ClInclude Include="HTMLParserBase.h" />
     <ClInclude Include="pch.h" />

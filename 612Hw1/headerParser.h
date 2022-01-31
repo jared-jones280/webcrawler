@@ -1,20 +1,19 @@
 #pragma once
+#include "cStringSpan.h"
 
-struct cStringSpan {
-	char* string;
-	int length;
-};
 
 struct headerParser {
 	
 	char* http;
+	int olen;
 	cStringSpan header;
 	cStringSpan body;
 	int statusCode;
 		
 
-	headerParser(char* _http) {
-		http = _http;
+	headerParser(cStringSpan _http) {
+		http = _http.string;
+		olen = _http.length;
 	}
 	
 	bool extract() {
@@ -32,7 +31,7 @@ struct headerParser {
 
 		//body
 		body.string = eoh + 4;
-		body.length = strlen(body.string);
+		body.length = olen-header.length;
 
 		std::regex sCode("\\d\\d\\d");
 		std::cmatch matches;

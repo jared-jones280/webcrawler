@@ -74,9 +74,9 @@ int main(int argc, char** argv)
 		//link.print();
 
 		//do connection and http
-		char* httpResponse = w.winsock_download(link);
+		cStringSpan httpResponse = w.winsock_download(link);
 
-		if (httpResponse == nullptr)
+		if (httpResponse.string == nullptr)
 			continue;
 
 		//std::cout <<"\"" << httpResponse  <<"\""<< std::endl;
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
 			char* savedLink = new char[lLen+1];
 			strcpy_s(savedLink,lLen+1,x.c_str());
 			clock_t begin = clock();
-			pageLinks = pb.Parse(p.body.string, p.body.length, savedLink, lLen, &nLinks);
+			pageLinks = pb.Parse(p.body.string, httpResponse.length, savedLink, lLen, &nLinks);
 			clock_t end = clock();
 			//printf("%s", savedLink);
 			delete[] savedLink;
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
 		//print header
 		//printf("%.*s\n", p.header.length, p.header.string);
 
-		free(httpResponse);
+		free(httpResponse.string);
 	}
 	return 0;
 }
