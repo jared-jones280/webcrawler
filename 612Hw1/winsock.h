@@ -12,7 +12,7 @@ struct winsock {
 	std::unordered_set<std::string> seenIps;
 	std::unordered_set<std::string> seenHosts;
 
-	cStringSpan readSock(SOCKET);
-	cStringSpan winsock_download(const urlInfo&);
+	cStringSpan readSock(SOCKET, size_t);
+	cStringSpan winsock_download(const urlInfo&, size_t, size_t);
 
 };

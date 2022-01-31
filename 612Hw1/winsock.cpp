@@ -9,7 +9,7 @@ given by Dmitri Loguinov
 #include "headerParser.h"
 #include "cStringSpan.h"
 
-cStringSpan winsock::readSock(SOCKET sock)
+cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 {
 	fd_set readFds;
 	FD_ZERO(&readFds);
@@ -24,8 +24,21 @@ cStringSpan winsock::readSock(SOCKET sock)
 		int ret = select(0, &readFds, nullptr, nullptr, &timeout);
 
 		if (ret > 0) {
-			// do recv
+			// do recv and track packets per second to determine if slow download
+			clock_t begin = clock();
 			int nbytes = recv(sock, &recvbuf[curr], (int)(currBuffSize - curr), 0);
+			clock_t end = clock();
+
+			//in this case its taking > 1 sec to recieve a single packet
+			//this can be adapted to any amount of packets/sec or using nbytes 
+			//adapted to bytes/sec or a traditional download speed for cutoff
+			//i could not find a specific "slow download rate" mentioned in the 
+			//requirements so i made this and plan to adapt it if necessary.
+			if (end - begin > 1000) {
+				std::cerr << "failed with slow download\n";
+				return cStringSpan(nullptr, 0);
+
+			}
 
 			if (nbytes == 0) {
 				recvbuf[curr] = '\0';
@@ -42,6 +55,13 @@ cStringSpan winsock::readSock(SOCKET sock)
 			curr += nbytes;
 			if (currBuffSize - curr < THRESHOLD) {
 				currBuffSize *= 2;
+
+				if (currBuffSize > max_size) {
+					std::cerr << "failed with exceeding max\n";
+					cStringSpan ret = cStringSpan(nullptr, 0);
+					return ret;
+
+				}
 				//char* newbuf = (char*)malloc(currBuffSize);
 				//for (int i = 0; i < currBuffSize / 2; i++) {
 				//	//std::cout << recvbuf[i];
@@ -87,7 +107,7 @@ cStringSpan winsock::readSock(SOCKET sock)
 	return ret;
 }
 
-cStringSpan winsock::winsock_download(const urlInfo& _info)
+cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, size_t page_size)
 {
 	char* str = _info.host;
 
@@ -200,7 +220,7 @@ cStringSpan winsock::winsock_download(const urlInfo& _info)
 		return cStringSpan(nullptr,0);
 	}
 
-	cStringSpan headbuf = readSock(sock);
+	cStringSpan headbuf = readSock(sock, robot_size);
 	if (headbuf.string == nullptr) {
 		return cStringSpan(nullptr,0);
 	}
@@ -269,7 +289,7 @@ cStringSpan winsock::winsock_download(const urlInfo& _info)
 		return cStringSpan(nullptr,0);
 	}
 
-	cStringSpan recvbuf = readSock(sock);
+	cStringSpan recvbuf = readSock(sock, page_size);
 
 	end = clock();
 

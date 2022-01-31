@@ -74,7 +74,8 @@ int main(int argc, char** argv)
 		//link.print();
 
 		//do connection and http
-		cStringSpan httpResponse = w.winsock_download(link);
+		//specifiying 16kb for max robots size and 2mb for max page size.
+		cStringSpan httpResponse = w.winsock_download(link, 16384, 2097152);
 
 		if (httpResponse.string == nullptr)
 			continue;
