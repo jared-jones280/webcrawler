@@ -17,6 +17,9 @@ cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 	size_t currBuffSize = INITIAL_BUF_SIZE;
 	size_t curr = 0;
 
+	//start timer for download (if > 10s then quit)
+	size_t begin = clock();
+
 	while (true) {
 		TIMEVAL timeout = { 10,0 };
 		FD_ZERO(&readFds);
@@ -24,18 +27,12 @@ cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 		int ret = select(0, &readFds, nullptr, nullptr, &timeout);
 
 		if (ret > 0) {
-			// do recv and track packets per second to determine if slow download
-			clock_t begin = clock();
 			int nbytes = recv(sock, &recvbuf[curr], (int)(currBuffSize - curr), 0);
-			clock_t end = clock();
 
-			//in this case its taking > 1 sec to recieve a single packet
-			//this can be adapted to any amount of packets/sec or using nbytes 
-			//adapted to bytes/sec or a traditional download speed for cutoff
-			//i could not find a specific "slow download rate" mentioned in the 
-			//requirements so i made this and plan to adapt it if necessary.
-			if (end - begin > 1000) {
-				std::cerr << "failed with slow download\n";
+			//checking for slow download there
+			size_t end = clock();
+			if (end - begin > 10000) {
+				std::cerr << "failed with slow download greater than 10s\n";
 				return cStringSpan(nullptr, 0);
 
 			}

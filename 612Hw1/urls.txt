@@ -9,6 +9,4 @@ http://www.yahoo.com
 http://www.facebook.com:80
 http://www.facebook.com:4437?addrbook.php
 http://s2.irl.cs.tamu.edu/IRL8
-http://zjk.focus.cn/
-http://azlist.about.com/a.htm 
-http://apoyanocastigues.mx/ 
+http://fuen.net.cn/
