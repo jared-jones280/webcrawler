@@ -28,10 +28,15 @@ int main(int argc, char** argv)
 		std::string line;
 		std::ifstream urlFile(argv[2]);
 		if (urlFile.is_open()) {
-			while (getline(urlFile, line)) {
+			std::streampos begin = urlFile.tellg();
+			urlFile.seekg(0, std::ios::end);
+			std::streampos end = urlFile.tellg();
+			urlFile.seekg(std::ios::beg);
+			while(getline(urlFile, line)) {
 				urlList.push_back(line);
 			}
 			urlFile.close();
+			printf("Opened %s with size %i\n", argv[2], (end-begin));
 		}
 		else
 			std::cerr << "Unable to open file "<<argv[2]<<"\n";
