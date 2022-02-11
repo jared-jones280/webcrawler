@@ -9,7 +9,9 @@
 
 int main(int argc, char** argv)
 {
-	std::vector<std::string> urlList;
+	//std::vector<std::string> urlList;
+	threadSafeQueue urlList;
+
 	//check for only 1 input argument
 	if (argc != 2 && argc != 3) {
 		printf("You entered %i parameters.\n Usage:\n./<executable> <link>\n or ./<executable> <numThreads> <linkFile>\n", argc - 1);
@@ -17,7 +19,7 @@ int main(int argc, char** argv)
 	}
 	else if (argc ==2) {
 		//printf("Got 1 command line parameter.\n");
-		urlList.push_back(argv[1]);
+		urlList.push(argv[1]);
 	}
 	else if (argc == 3) {
 		//currenly only allow 1 thread
@@ -34,7 +36,7 @@ int main(int argc, char** argv)
 			std::streampos end = urlFile.tellg();
 			urlFile.seekg(std::ios::beg);
 			while(getline(urlFile, line)) {
-				urlList.push_back(line);
+				urlList.push(line);
 			}
 			urlFile.close();
 			printf("Opened %s with size %i\n", argv[2], (end-begin));
@@ -44,7 +46,8 @@ int main(int argc, char** argv)
 	}
 
 	winsock w;
-	for (auto x : urlList) {
+	while(urlList.size() > 0) {
+		auto x = urlList.pop();
 		printf("URL: %s\n", x.c_str());
 		//need to adapt to using url list and add robots.txt functionality
 
