@@ -15,4 +15,7 @@ struct winsock {
 	cStringSpan readSock(SOCKET, size_t);
 	cStringSpan winsock_download(const urlInfo&, size_t, size_t);
 
+	std::mutex mIps;
+	std::mutex mHosts;
+
 };

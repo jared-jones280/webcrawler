@@ -7,48 +7,10 @@
 #include "winsock.h"
 #include "threadSafeQueue.h"
 
-int main(int argc, char** argv)
-{
-	//std::vector<std::string> urlList;
-	threadSafeQueue urlList;
-
-	//check for only 1 input argument
-	if (argc != 2 && argc != 3) {
-		printf("You entered %i parameters.\n Usage:\n./<executable> <link>\n or ./<executable> <numThreads> <linkFile>\n", argc - 1);
-		exit(-1);
-	}
-	else if (argc ==2) {
-		//printf("Got 1 command line parameter.\n");
-		urlList.push(argv[1]);
-	}
-	else if (argc == 3) {
-		//currenly only allow 1 thread
-		if (strtol(argv[1], nullptr, 10) != 1) {
-			std::cerr << "Only allowed 1 thread for now, please change numThreads and rerun.\n";
-			exit(-1);
-		}
-		
-		std::string line;
-		std::ifstream urlFile(argv[2]);
-		if (urlFile.is_open()) {
-			std::streampos begin = urlFile.tellg();
-			urlFile.seekg(0, std::ios::end);
-			std::streampos end = urlFile.tellg();
-			urlFile.seekg(std::ios::beg);
-			while(getline(urlFile, line)) {
-				urlList.push(line);
-			}
-			urlFile.close();
-			printf("Opened %s with size %i\n", argv[2], (end-begin));
-		}
-		else
-			std::cerr << "Unable to open file "<<argv[2]<<"\n";
-	}
-
-	winsock w;
-	while(urlList.size() > 0) {
-		auto x = urlList.pop();
-		printf("URL: %s\n", x.c_str());
+int consume(threadSafeQueue* urlList, winsock * w) {
+	while(urlList->size() > 0) {
+		auto x = urlList->pop();
+		printf("[%i]URL: %s\n",std::this_thread::get_id(), x.c_str());
 		//need to adapt to using url list and add robots.txt functionality
 
 		int lLen = strlen(x.c_str());
@@ -84,7 +46,7 @@ int main(int argc, char** argv)
 
 		//do connection and http
 		//specifiying 16kb for max robots size and 2mb for max page size.
-		cStringSpan httpResponse = w.winsock_download(link, 16384, 2097152);
+		cStringSpan httpResponse = w->winsock_download(link, 16384, 2097152);
 
 		if (httpResponse.string == nullptr)
 			continue;
@@ -126,6 +88,58 @@ int main(int argc, char** argv)
 
 		free(httpResponse.string);
 	}
+	return 0;
+}
+
+int main(int argc, char** argv)
+{
+	//std::vector<std::string> urlList;
+	threadSafeQueue urlList;
+	int nthreads=1;
+
+	//check for only 1 input argument
+	if (argc != 2 && argc != 3) {
+		printf("You entered %i parameters.\n Usage:\n./<executable> <link>\n or ./<executable> <numThreads> <linkFile>\n", argc - 1);
+		exit(-1);
+	}
+	else if (argc ==2) {
+		//printf("Got 1 command line parameter.\n");
+		urlList.push(argv[1]);
+	}
+	else if (argc == 3) {
+		//currenly only allow 1 thread
+		nthreads = strtol(argv[1], nullptr,10);
+		
+		std::string line;
+		std::ifstream urlFile(argv[2]);
+		if (urlFile.is_open()) {
+			std::streampos begin = urlFile.tellg();
+			urlFile.seekg(0, std::ios::end);
+			std::streampos end = urlFile.tellg();
+			urlFile.seekg(std::ios::beg);
+			while(getline(urlFile, line)) {
+				urlList.push(line);
+			}
+			urlFile.close();
+			printf("Opened %s with size %i\n", argv[2], (end-begin));
+		}
+		else
+			std::cerr << "Unable to open file "<<argv[2]<<"\n";
+	}
+
+	winsock w;
+
+	//lets make some threads
+	std::vector<std::thread> consumers;
+	for (int i = 0; i < nthreads; i++) {
+		consumers.push_back(std::thread(consume, &urlList, &w));
+	}
+
+	//wait for them all to join
+	for (auto &x : consumers) {
+		x.join();
+	}
+
 	return 0;
 }
 

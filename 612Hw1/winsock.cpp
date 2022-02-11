@@ -146,7 +146,9 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 			return cStringSpan(nullptr,0);
 		}
 		else { // take the first IP address and copy into sin_addr
+			mHosts.lock();
 			auto p = seenHosts.insert(str);
+			mHosts.unlock();
 
 			//check Host Uniqueness
 			if (p.second) {
@@ -170,7 +172,9 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	printf("\tDoing DNS... done in %ims , found %s\n", end - begin, inet_ntoa(server.sin_addr));
 
 	//check IP uniqueness
+	mIps.lock();
 	auto p = seenIps.insert(inet_ntoa(server.sin_addr));
+	mIps.unlock();
 	if (p.second) {
 		printf("\tChecking IP uniqueness... passed\n");
 	}
