@@ -91,6 +91,8 @@ int consume(threadSafeQueue* urlList, winsock * w) {
 	return 0;
 }
 
+// TODO: allow for optional printing output and stats thread that tracks stats
+// write report
 int main(int argc, char** argv)
 {
 	//std::vector<std::string> urlList;
