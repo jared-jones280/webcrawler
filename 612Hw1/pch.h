@@ -18,5 +18,8 @@
 #include <time.h>
 #include <string.h>
 #include "HTMLParserBase.h"
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 
 #endif //PCH_H

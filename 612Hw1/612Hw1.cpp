@@ -5,6 +5,7 @@
 #include "urlInfo.h"
 #include "headerParser.h"
 #include "winsock.h"
+#include "threadSafeQueue.h"
 
 int main(int argc, char** argv)
 {

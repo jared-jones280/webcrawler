@@ -162,6 +162,7 @@
     <ClInclude Include="headerParser.h" />
     <ClInclude Include="HTMLParserBase.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="threadSafeQueue.h" />
     <ClInclude Include="urlInfo.h" />
     <ClInclude Include="winsock.h" />
   </ItemGroup>
