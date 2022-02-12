@@ -9,18 +9,23 @@ struct headerParser {
 	cStringSpan header;
 	cStringSpan body;
 	int statusCode;
+	bool print=true;
 		
 
-	headerParser(cStringSpan _http) {
+	headerParser(cStringSpan _http, bool _print) {
 		http = _http.string;
 		olen = _http.length;
+		print = _print;
 	}
 	
 	bool extract() {
 		//some quick error checkin
 
 		if (strstr(http, "\r\n\r\n") == nullptr || strstr(http, "HTTP") == nullptr) {
-			printf("failed with non-HTTP header\n");
+
+			if (print) {
+				printf("failed with non-HTTP header\n");
+			}
 			return 0;
 		}
 
@@ -41,7 +46,9 @@ struct headerParser {
 			return 1;
 		}
 		else {
-			std::cerr << "Unable to find status code in html response, this is not valid\n";
+			if (print) {
+				std::cerr << "Unable to find status code in html response, this is not valid\n";
+			}
 			return 0;
 		}
 

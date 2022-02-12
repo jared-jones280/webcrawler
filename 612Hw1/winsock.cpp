@@ -9,6 +9,36 @@ given by Dmitri Loguinov
 #include "headerParser.h"
 #include "cStringSpan.h"
 
+winstats winsock::getWinStats() {
+	winstats ret;
+
+	mFinished.lock();
+	ret.nFinished = nFinished;
+	mFinished.unlock();
+
+	mHostUnique.lock();
+	ret.nHostUnique = nHostUnique;
+	mHostUnique.unlock();
+
+	mDNSLookup.lock();
+	ret.nDNSLookup = nDNSLookup;
+	mDNSLookup.unlock();
+
+	mIpUnique.lock();
+	ret.nIpUnique = nIpUnique;
+	mIpUnique.unlock();
+
+	mRobotsCheck.lock();
+	ret.nRobotsCheck = nRobotsCheck;
+	mRobotsCheck.unlock();
+
+	mURLs.lock();
+	ret.nURLs = nURLs;
+	mURLs.unlock();
+
+	return ret;
+}
+
 cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 {
 	fd_set readFds;
@@ -32,7 +62,9 @@ cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 			//checking for slow download there
 			size_t end = clock();
 			if (end - begin > 10000) {
-				std::cerr << "failed with slow download greater than 10s\n";
+				if (print) {
+					std::cerr << "failed with slow download greater than 10s\n";
+				}
 				return cStringSpan(nullptr, 0);
 
 			}
@@ -42,7 +74,9 @@ cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 				break;
 			}
 			if (nbytes == SOCKET_ERROR) {
-				std::cerr << "\tRecv error occured: " << WSAGetLastError() << "\n";
+				if (print) {
+					std::cerr << "\tRecv error occured: " << WSAGetLastError() << "\n";
+				}
 				free(recvbuf);
 				closesocket(sock);
 				WSACleanup();
@@ -54,7 +88,9 @@ cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 				currBuffSize *= 2;
 
 				if (currBuffSize > max_size) {
-					std::cerr << "failed with exceeding max\n";
+					if (print) {
+						std::cerr << "failed with exceeding max\n";
+					}
 					cStringSpan ret = cStringSpan(nullptr, 0);
 					return ret;
 
@@ -69,7 +105,9 @@ cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 
 				recvbuf = (char*)realloc(recvbuf, currBuffSize*sizeof(char));
 				if (recvbuf == nullptr) {
-					std::cerr << "\tMemory allocation error: " << "\n";
+					if (print) {
+						std::cerr << "\tMemory allocation error: " << "\n";
+					}
 					free(recvbuf);
 					closesocket(sock);
 					WSACleanup();
@@ -79,7 +117,9 @@ cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 		}
 		else if (ret == 0) {
 			//timed out
-			std::cerr << "\tRequest timed out\n";
+			if (print) {
+				std::cerr << "\tRequest timed out\n";
+			}
 			free(recvbuf);
 			closesocket(sock);
 			WSACleanup();
@@ -88,7 +128,9 @@ cStringSpan winsock::readSock(SOCKET sock, size_t max_size)
 		}
 		else{
 			//error
-			std::cerr << "\tSocket error occured: " << WSAGetLastError() << "\n";
+			if (print) {
+				std::cerr << "\tSocket error occured: " << WSAGetLastError() << "\n";
+			}
 			free(recvbuf);
 			closesocket(sock);
 			WSACleanup();
@@ -113,7 +155,9 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	//Initialize WinSock; once per program run
 	WORD wVersionRequested = MAKEWORD(2, 2);
 	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-		printf("\tWSAStartup error %d\n", WSAGetLastError());
+		if (print) {
+			printf("\tWSAStartup error %d\n", WSAGetLastError());
+		}
 		WSACleanup();
 		return cStringSpan(nullptr,0);
 	}
@@ -122,7 +166,9 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sock == INVALID_SOCKET)
 	{
-		printf("\tsocket() generated error %d\n", WSAGetLastError());
+		if (print) {
+			printf("\tsocket() generated error %d\n", WSAGetLastError());
+		}
 		WSACleanup();
 		return cStringSpan(nullptr,0);
 	}
@@ -142,7 +188,9 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 		// if not a valid IP, then do a DNS lookup
 		if ((remote = gethostbyname(str)) == NULL)
 		{
-			printf("\tInvalid string: neither FQDN, nor IP address. Failed with %i\n", WSAGetLastError());
+			if (print) {
+				printf("\tInvalid string: neither FQDN, nor IP address. Failed with %i\n", WSAGetLastError());
+			}
 			return cStringSpan(nullptr,0);
 		}
 		else { // take the first IP address and copy into sin_addr
@@ -152,10 +200,14 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 
 			//check Host Uniqueness
 			if (p.second) {
-				printf("\tChecking Host uniqueness... passed\n");
+				if (print) {
+					printf("\tChecking Host uniqueness... passed\n");
+				}
 			}
 			else {
-				printf("\tChecking Host uniqueness... failed\n");
+				if (print) {
+					printf("\tChecking Host uniqueness... failed\n");
+				}
 				return cStringSpan(nullptr,0);
 			}
 			memcpy((char*)&(server.sin_addr), remote->h_addr, remote->h_length);
@@ -163,23 +215,31 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	}
 	else
 	{
-		printf("\tChecking Host uniqueness... Skipped (host = IP)\n");
+		if (print) {
+			printf("\tChecking Host uniqueness... Skipped (host = IP)\n");
+		}
 		// if a valid IP, directly drop its binary version into sin_addr
 		server.sin_addr.S_un.S_addr = IP;
 	}
 	clock_t end = clock();
 
-	printf("\tDoing DNS... done in %ims , found %s\n", end - begin, inet_ntoa(server.sin_addr));
+	if (print) {
+		printf("\tDoing DNS... done in %ims , found %s\n", end - begin, inet_ntoa(server.sin_addr));
+	}
 
 	//check IP uniqueness
 	mIps.lock();
 	auto p = seenIps.insert(inet_ntoa(server.sin_addr));
 	mIps.unlock();
 	if (p.second) {
-		printf("\tChecking IP uniqueness... passed\n");
+		if (print) {
+			printf("\tChecking IP uniqueness... passed\n");
+		}
 	}
 	else {
-		printf("\tChecking IP uniqueness... failed\n");
+		if (print) {
+			printf("\tChecking IP uniqueness... failed\n");
+		}
 		return cStringSpan(nullptr,0);
 	}
 
@@ -188,7 +248,9 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 
 	const long tmpPort = strtol(_info.port, nullptr, 10);
 	if (tmpPort < 0 || tmpPort > 65535) {
-		std::cerr << "\tError: port of out range: " << tmpPort << "\n";
+		if (print) {
+			std::cerr << "\tError: port of out range: " << tmpPort << "\n";
+		}
 		WSACleanup();
 		return cStringSpan(nullptr,0);
 	}
@@ -198,11 +260,15 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	begin = clock();
 	if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
 	{
-		printf("\tConnection error: %d\n", WSAGetLastError());
+		if (print) {
+			printf("\tConnection error: %d\n", WSAGetLastError());
+		}
 		return cStringSpan(nullptr,0);
 	}
 	end = clock();
-	printf("        Connecting on robots... done in %ims\n", end - begin);
+	if (print) {
+		printf("        Connecting on robots... done in %ims\n", end - begin);
+	}
 
 	//create http request
 	std::string robots_http_req = "GET robots.txt HTTP/1.0\r\n";
@@ -212,10 +278,14 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	robots_http_req += "\r\n";
 
 	begin = clock();
-	printf("\tLoading... ");
+	if (print) {
+		printf("\tLoading... ");
+	}
 	//send http request
 	if (SOCKET_ERROR == send(sock, robots_http_req.c_str(), strlen(robots_http_req.c_str()), 0)) {
-		std::cerr << "\tError sending GET request: " << WSAGetLastError() << "\n";
+		if (print) {
+			std::cerr << "\tError sending GET request: " << WSAGetLastError() << "\n";
+		}
 		closesocket(sock);
 		WSACleanup();
 		return cStringSpan(nullptr,0);
@@ -227,19 +297,23 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	}
 	end = clock();
 
-	printf("done in %ims with %i bytes\n", end - begin, headbuf.length);
+	if (print) {
+		printf("done in %ims with %i bytes\n", end - begin, headbuf.length);
+	}
 	//printf("%s\n", recvbuf);
 	// close the socket to this server; open again for the next one
 	closesocket(sock);
 
 	//parse robots.txt header
 
-	headerParser hp(headbuf);
+	headerParser hp(headbuf, print);
 	if (hp.extract() == 0) {
 		return cStringSpan(nullptr,0);
 	}
 
-	std::cout << "\tVerifying header... status code " << hp.statusCode << "\n";
+	if (print) {
+		std::cout << "\tVerifying header... status code " << hp.statusCode << "\n";
+	}
 
 	//looking for DNE (4xx) on robots to continue
 	//else continue and parse actual page
@@ -253,7 +327,9 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sock == INVALID_SOCKET)
 	{
-		printf("\tsocket() generated error %d\n", WSAGetLastError());
+		if (print) {
+			printf("\tsocket() generated error %d\n", WSAGetLastError());
+		}
 		WSACleanup();
 		return cStringSpan(nullptr,0);
 	}
@@ -262,11 +338,16 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	begin = clock();
 	if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
 	{
-		printf("\tConnection error: %d\n", WSAGetLastError());
+		if (print) {
+			printf("\tConnection error: %d\n", WSAGetLastError());
+		}
 		return cStringSpan(nullptr,0);
 	}
 	end = clock();
-	printf("      * Connecting on page... done in %ims\n", end - begin);
+	if (print) {
+		printf("      * Connecting on page... done in %ims\n", end - begin);
+
+	}
 
 	// send HTTP requests here
 
@@ -281,10 +362,14 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	//printf("Sending the following request:\n%s", get_http_req.c_str());
 
 	begin = clock();
-	printf("\tLoading... ");
+	if (print) {
+		printf("\tLoading... ");
+	}
 	//send http request
 	if (SOCKET_ERROR == send(sock, get_http_req.c_str(), strlen(get_http_req.c_str()), 0)) {
-		std::cerr << "\tError sending GET request: " << WSAGetLastError() << "\n";
+		if (print) {
+			std::cerr << "\tError sending GET request: " << WSAGetLastError() << "\n";
+		}
 		closesocket(sock);
 		WSACleanup();
 		return cStringSpan(nullptr,0);
@@ -300,7 +385,9 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 
 	end = clock();
 
-	printf("done in %ims with %lu bytes\n", end - begin, recvbuf.length);
+	if (print) {
+		printf("done in %ims with %lu bytes\n", end - begin, recvbuf.length);
+	}
 
 	//printf("%s\n", recvbuf);
 

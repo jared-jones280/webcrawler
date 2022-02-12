@@ -9,12 +9,15 @@ struct urlInfo {
 	char* query = nullptr;
 	char* path = nullptr;
 	char* port = nullptr;
+	bool print = true;
 
 	bool extract(char* _a) {
 		start = _a;
 		httpCheck = strstr(start, "http://");
 		if (httpCheck == nullptr) {
-			printf("Could not find \'http://\' in link. Make sure your link is http.\n");
+			if (print) {
+				printf("Could not find \'http://\' in link. Make sure your link is http.\n");
+			}
 			return 0;
 		}
 		else {
@@ -66,7 +69,9 @@ struct urlInfo {
 			//printf("Truncated port : % s\n", link);
 			//printf("Port: %s\n", port);
 			if (strtol(port,nullptr, 10) == 0 || plen == 0) {
-				std::cerr<< "\tParsing URL... failed with invalid port\n";
+				if(print){
+					std::cerr<< "\tParsing URL... failed with invalid port\n";
+				}
 				return 0;
 			}
 
@@ -91,7 +96,7 @@ struct urlInfo {
 		}
 	}
 
-	void print() {
+	void printa() {
 		printf("Host: ");
 		this->printIndividual(host);
 		printf("Port: ");

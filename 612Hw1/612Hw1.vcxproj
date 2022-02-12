@@ -167,6 +167,8 @@
     <ClInclude Include="winsock.h" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="URL-input-100.txt" />
+    <Text Include="URL-input-1M-2019.txt" />
     <Text Include="urls.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
