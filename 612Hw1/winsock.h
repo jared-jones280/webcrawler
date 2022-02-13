@@ -11,6 +11,14 @@ struct winstats {
 	int nIpUnique = 0;
 	int nRobotsCheck = 0;
 	int nURLs = 0;
+	int nLinks = 0;
+	int nPageSize = 0;
+
+	int http2 = 0;
+	int http3 = 0;
+	int http4 = 0;
+	int http5 = 0;
+	int httpx = 0;
 };
 
 struct winsock {
@@ -49,6 +57,19 @@ struct winsock {
 
 	std::mutex mURLs;
 	int nURLs = 0;
+
+	std::mutex mLinks;
+	int nLinks = 0;
+
+	std::mutex mPageSize;
+	int nPageSize = 0;
+
+	std::mutex mHttpCodes;
+	int http2 = 0;
+	int http3 = 0;
+	int http4 = 0;
+	int http5 = 0;
+	int httpx = 0;
 
 };
 

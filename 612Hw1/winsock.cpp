@@ -36,6 +36,22 @@ winstats winsock::getWinStats() {
 	ret.nURLs = nURLs;
 	mURLs.unlock();
 
+	mLinks.lock();
+	ret.nLinks = nLinks;
+	mLinks.unlock();
+
+	mPageSize.lock();
+	ret.nPageSize = nPageSize;
+	mPageSize.unlock();
+
+	mHttpCodes.lock();
+	ret.http2 = http2;
+	ret.http3 = http3;
+	ret.http4 = http4;
+	ret.http5 = http5;
+	ret.httpx = httpx;
+	mHttpCodes.unlock();
+
 	return ret;
 }
 
@@ -186,6 +202,7 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	if (IP == INADDR_NONE)
 	{
 		// if not a valid IP, then do a DNS lookup
+		/*
 		if ((remote = gethostbyname(str)) == NULL)
 		{
 			if (print) {
@@ -194,6 +211,12 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 			return cStringSpan(nullptr,0);
 		}
 		else { // take the first IP address and copy into sin_addr
+			//add a successful dns lookup
+			mDNSLookup.lock();
+			nDNSLookup++;
+			mDNSLookup.unlock();
+
+
 			mHosts.lock();
 			auto p = seenHosts.insert(str);
 			mHosts.unlock();
@@ -203,6 +226,10 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 				if (print) {
 					printf("\tChecking Host uniqueness... passed\n");
 				}
+				//add a unique host
+				mHostUnique.lock();
+				nHostUnique++;
+				mHostUnique.unlock();
 			}
 			else {
 				if (print) {
@@ -212,6 +239,45 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 			}
 			memcpy((char*)&(server.sin_addr), remote->h_addr, remote->h_length);
 		}
+		*/
+	
+		mHosts.lock();
+		auto p = seenHosts.insert(str);
+		mHosts.unlock();
+
+		//check Host Uniqueness
+		if (p.second) {
+			if (print) {
+				printf("\tChecking Host uniqueness... passed\n");
+			}
+			//add a unique host
+			mHostUnique.lock();
+			nHostUnique++;
+			mHostUnique.unlock();
+			// if not a valid IP, then do a DNS lookup
+			if ((remote = gethostbyname(str)) == NULL)
+			{
+				if (print) {
+					printf("\tInvalid string: neither FQDN, nor IP address. Failed with %i\n", WSAGetLastError());
+				}
+				return cStringSpan(nullptr, 0);
+			}
+			else { // take the first IP address and copy into sin_addr
+				//add a successful dns lookup
+				mDNSLookup.lock();
+				nDNSLookup++;
+				mDNSLookup.unlock();
+			}
+		}
+		else {
+			if (print) {
+				printf("\tChecking Host uniqueness... failed\n");
+			}
+			return cStringSpan(nullptr, 0);
+		}
+
+		memcpy((char*)&(server.sin_addr), remote->h_addr, remote->h_length);
+		
 	}
 	else
 	{
@@ -222,6 +288,7 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 		server.sin_addr.S_un.S_addr = IP;
 	}
 	clock_t end = clock();
+	
 
 	if (print) {
 		printf("\tDoing DNS... done in %ims , found %s\n", end - begin, inet_ntoa(server.sin_addr));
@@ -235,6 +302,10 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 		if (print) {
 			printf("\tChecking IP uniqueness... passed\n");
 		}
+		//add successful IP uniqueness
+		mIpUnique.lock();
+		nIpUnique++;
+		mIpUnique.unlock();
 	}
 	else {
 		if (print) {
@@ -320,6 +391,10 @@ cStringSpan winsock::winsock_download(const urlInfo& _info, size_t robot_size, s
 	if (hp.statusCode < 400 || hp.statusCode > 499) {
 		return cStringSpan(nullptr,0);
 	}
+	//add successful robots check
+	mRobotsCheck.lock();
+	nRobotsCheck++;
+	mRobotsCheck.unlock();
 
 	///////////////////////////////////////PAGE//////////////////////////////////////////
 	//set up socket again

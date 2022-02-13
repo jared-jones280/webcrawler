@@ -71,8 +71,15 @@ int consume(threadSafeQueue* urlList, winsock * w, bool print) {
 			std::cout << "\tVerifying header... status code " << p.statusCode << "\n";
 		}
 
+		//TODO: add check for status code of page and increment winsock httpx accordingly
+
+
 		if (p.statusCode > 199 && p.statusCode < 300) {
 			//parse html body here
+			//add successful crawled url 
+			w->mURLs.lock();
+			w->nURLs++;
+			w->mURLs.unlock();
 
 			HTMLParserBase pb;
 			char* pageLinks;
@@ -89,6 +96,16 @@ int consume(threadSafeQueue* urlList, winsock * w, bool print) {
 			if (print) {
 				printf("      + Parsing page... done in %ims with %i links\n", end - begin, nLinks);
 			}
+
+			//add size of page parsed
+			w->mPageSize.lock();
+			w->nPageSize += httpResponse.length;
+			w->mPageSize.unlock();
+
+			//add nlinks if you get this far
+			w->mLinks.lock();
+			w->nLinks += nLinks;
+			w->mLinks.unlock();
 		}
 		else {
 			//skip html parse
@@ -113,16 +130,30 @@ int consume(threadSafeQueue* urlList, winsock * w, bool print) {
 int stats(threadSafeQueue* urlList, winsock* w, int nThreads, int initListSize) {
 	winstats s = w->getWinStats();
 	int time = 0;
+	int prev = urlList->size();
+	int prevSize = s.nPageSize;
 	while (s.nFinished < nThreads) {
 		s = w->getWinStats();
 		//time (sec), number of active remaining threads, size of queue
 		int currList = urlList->size();
-		printf("[%3d] %5i Q%6d E%7d\n", time, nThreads - s.nFinished, currList, initListSize-currList);
-		
+		printf("[%3d] %5i Q%6d E%7d H%7d D%7d I%5d R%5d C%5d L%4dK\n", time, nThreads - s.nFinished, currList, initListSize-currList, s.nHostUnique, s.nDNSLookup, s.nIpUnique, s.nRobotsCheck, s.nURLs, s.nLinks/1000);
+		//divide by 125000 for conversion of bytes/s to megabits/s
+		printf("\t*** crawling %.1lf pps @ %.1lf Mbps\n", (prev - currList)/2.0, (s.nPageSize - prevSize)/2.0/125000);
+		prevSize = s.nPageSize;
+		prev = currList;
 		
 		time += 2;
 		Sleep(2000);
 	}
+
+	s = w->getWinStats();
+	printf("\n");
+	printf("Extracted %d URLs @ %d/s\n", initListSize - urlList->size(), initListSize - urlList->size() / time);
+	printf("Looked up %d DNS names @ %d/s\n", s.nHostUnique, s.nHostUnique / time);
+	printf("Attempted %d robots @ %d/s\n", s.nIpUnique, s.nIpUnique / time);
+	printf("Crawled %d pages @ %d/s (%.2lf MB)\n", s.nURLs, s.nURLs / time, s.nPageSize / 1000000);
+	printf("Parsed %d links @ %d/s\n", s.nLinks, s.nLinks / time);
+	printf("HTTP codes: 2xx = %d, 3xx = %d, 4xx = %d, 5xx = %d, other = %d\n", s.http2, s.http3, s.http4, s.http5, s.httpx);
 
 	return 0;
 }
@@ -155,7 +186,7 @@ int main(int argc, char** argv)
 			std::streampos begin = urlFile.tellg();
 			urlFile.seekg(0, std::ios::end);
 			std::streampos end = urlFile.tellg();
-			urlFile.seekg(std::ios::beg);
+			urlFile.seekg(0,std::ios::beg);
 			while(getline(urlFile, line)) {
 				urlList.push(line);
 			}
