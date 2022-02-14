@@ -58,5 +58,8 @@
     <Text Include="URL-input-100.txt">
       <Filter>Source Files</Filter>
     </Text>
+    <Text Include="URL-input-1M.txt">
+      <Filter>Source Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>
