@@ -19,7 +19,7 @@ public:
 
 private:
 	
-	std::queue<std::string> q;
+	std::vector<std::string> q;
 	std::mutex m;
 
 };
@@ -31,16 +31,18 @@ threadSafeQueue::~threadSafeQueue(){}
 
 //throw items in queue haphazardly
 void threadSafeQueue::push(std::string _s) {
-	q.push(_s);
+	q.push_back(_s);
 }
 
 std::string threadSafeQueue::pop() {
 	std::string ret = "";
 	std::unique_lock<std::mutex> lock(m);
-	ret = q.front();
-	q.pop();
-	lock.unlock();
-	return ret;
+	if(q.size() > 0){
+		ret = q.back();
+		q.pop_back();
+		return ret;
+	}
+	return "";
 }
 
 int threadSafeQueue::size() {

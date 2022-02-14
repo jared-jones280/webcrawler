@@ -10,6 +10,9 @@
 int consume(threadSafeQueue* urlList, winsock * w, bool print) {
 	while(urlList->size() > 0) {
 		auto x = urlList->pop();
+		if (x == ""){
+			continue;
+		}
 		if (print) {
 			printf("[%i]URL: %s\n",std::this_thread::get_id(), x.c_str());
 		}
@@ -113,6 +116,16 @@ int consume(threadSafeQueue* urlList, winsock * w, bool print) {
 			if (print) {
 				printf("      + Parsing page... done in %ims with %i links\n", end - begin, nLinks);
 			}
+
+			//put found links dump in output file
+			w->fileWrite.lock();
+			std::fstream file;
+			file.open("output.txt", std::ios_base::app | std::ios_base::in);
+			if (file.is_open()) {
+				file << pageLinks<<std::endl;
+			}
+			file.close();
+			w->fileWrite.unlock();
 
 			//add size of page parsed
 			w->mPageSize.lock();

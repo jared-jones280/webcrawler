@@ -71,5 +71,7 @@ struct winsock {
 	int http5 = 0;
 	int httpx = 0;
 
+	std::mutex fileWrite;
+
 };
 
