@@ -170,6 +170,7 @@
   <ItemGroup>
     <Text Include="URL-input-100.txt" />
     <Text Include="URL-input-1M-2019.txt" />
+    <Text Include="URL-input-1M.txt" />
     <Text Include="urls.txt" />
   </ItemGroup>
   <ItemGroup>
