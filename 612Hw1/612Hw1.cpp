@@ -122,7 +122,7 @@ int consume(threadSafeQueue* urlList, winsock * w, bool print) {
 			std::fstream file;
 			file.open("output.txt", std::ios_base::app | std::ios_base::in);
 			if (file.is_open()) {
-				file << pageLinks<<std::endl;
+				file <<"[[" << x << "]]" << std::endl << pageLinks << std::endl;
 			}
 			file.close();
 			w->fileWrite.unlock();
