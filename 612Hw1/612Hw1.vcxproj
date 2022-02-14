@@ -172,6 +172,9 @@
     <Text Include="URL-input-1M-2019.txt" />
     <Text Include="urls.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Hw1 Report.pdf" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

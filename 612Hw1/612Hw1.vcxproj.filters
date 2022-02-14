@@ -59,4 +59,9 @@
       <Filter>Source Files</Filter>
     </Text>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Hw1 Report.pdf">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>
