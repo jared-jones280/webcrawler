@@ -130,6 +130,7 @@ int consume(threadSafeQueue* urlList, winsock * w, bool print) {
 			//add size of page parsed
 			w->mPageSize.lock();
 			w->nPageSize += httpResponse.length;
+			//printf("%d| ", w->nPageSize);
 			w->mPageSize.unlock();
 
 			//add nlinks if you get this far
@@ -181,7 +182,7 @@ int stats(threadSafeQueue* urlList, winsock* w, int nThreads, int initListSize) 
 	printf("Extracted %d URLs @ %d/s\n", initListSize - urlList->size(), initListSize - urlList->size() / time);
 	printf("Looked up %d DNS names @ %d/s\n", s.nHostUnique, s.nHostUnique / time);
 	printf("Attempted %d robots @ %d/s\n", s.nIpUnique, s.nIpUnique / time);
-	printf("Crawled %d pages @ %d/s (%.2lf MB)\n", s.nURLs, s.nURLs / time, s.nPageSize / 1000000);
+	printf("Crawled %d pages @ %d/s (%.2lf MB)\n", s.nURLs, s.nURLs / time, s.nPageSize / 1000000.0);
 	printf("Parsed %d links @ %d/s\n", s.nLinks, s.nLinks / time);
 	printf("HTTP codes: 2xx = %d, 3xx = %d, 4xx = %d, 5xx = %d, other = %d\n", s.http2, s.http3, s.http4, s.http5, s.httpx);
 
