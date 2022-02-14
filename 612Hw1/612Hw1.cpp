@@ -71,8 +71,25 @@ int consume(threadSafeQueue* urlList, winsock * w, bool print) {
 			std::cout << "\tVerifying header... status code " << p.statusCode << "\n";
 		}
 
-		//TODO: add check for status code of page and increment winsock httpx accordingly
+		w->mHttpCodes.lock();
 
+		if (p.statusCode < 200 | p.statusCode > 599) {
+			w->httpx++;
+		}
+		else if (p.statusCode >= 200 & p.statusCode <= 299) {
+			w->http2++;
+		}
+		else if (p.statusCode >= 300 & p.statusCode <= 399) {
+			w->http3++;
+		}
+		else if (p.statusCode >= 400 & p.statusCode <= 499) {
+			w->http4++;
+		}
+		else if (p.statusCode >= 500 & p.statusCode <= 599) {
+			w->http5++;
+		}
+
+		w->mHttpCodes.unlock();
 
 		if (p.statusCode > 199 && p.statusCode < 300) {
 			//parse html body here
